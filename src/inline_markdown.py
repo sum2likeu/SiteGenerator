@@ -1,5 +1,6 @@
 from enum import Enum
 from textnode import TextNode, TextType, text_node_to_html_node
+from htmlnode import ParentNode,HTMLNode
 import re
 class BlockType(Enum):
     PARAGRAPH = "paragraph"
@@ -121,9 +122,45 @@ def markdown_to_html_node(markdown):
             node = head_to_html(b)
         elif block_to_block_type(b) == BlockType.PARAGRAPH:
             text = b.replace("\n", " ")
-            children = text_to_children(text)
-            node = ParentNode("p", children)
+            il_children = text_to_children(text)
+            node = ParentNode("p", il_children)
+        elif block_to_block_type(b) == BlockType.CODE:
+            if not b.startswith("```") or not b.endswith("```"):
+                raise ValueError("invalid code block")
+            text = b[4:-3]
+            raw_text_node = TextNode(text, TextType.TEXT)
+            child = text_node_to_html_node(raw_text_node)
+            code = ParentNode("code", [child])
+            node = ParentNode("pre", [code])
+        elif block_to_block_type(b) == BlockType.ORDERED_LIST:
+            items = b.split("\n")
+            html_items = []
+            for item in items:
+                parts = item.split(". ", 1)
+                text = parts[1]
+                il_children = text_to_children(text)
+                html_items.append(ParentNode("li", il_children))
+            node = ParentNode("ol", html_items)
+        elif block_to_block_type(b) == BlockType.UNORDERED_LIST:
+            items = b.split("\n")
+            html_items = []
+            for item in items:
+                text = item[2:]
+                il_children = text_to_children(text)
+                html_items.append(ParentNode("li", il_children))
+            node = ParentNode("ul", html_items)
+        elif block_to_block_type(b) == BlockType.QUOTE:
+            lines = b.split("\n")
+            new_lines = []
+            for line in lines:
+                if not line.startswith(">"):
+                    raise ValueError("invalid quote block")
+                new_lines.append(line.lstrip(">").strip())
+            content = " ".join(new_lines)
+            il_children = text_to_children(content)
+            node = ParentNode("blockquote", il_children)
         children.append(node)
+
     parent = ParentNode("div",children)
     return parent
 def text_to_children(text):
@@ -135,21 +172,21 @@ def text_to_children(text):
 def head_to_html(b):
     if b.startswith("# "):
         children = text_to_children(b[2:])
-        return HTMLNode("h1",children)
+        return ParentNode("h1",children)
     elif b.startswith("## "):
         children = text_to_children(b[3:])
-        return HTMLNode("h2",children)
+        return ParentNode("h2",children)
     elif b.startswith("### "):
         children = text_to_children(b[4:])
-        return HTMLNode("h3",children)
+        return ParentNode("h3",children)
     elif b.startswith("#### "):
         children = text_to_children(b[5:])
-        return HTMLNode("h4",children)
+        return ParentNode("h4",children)
     elif b.startswith("##### "):
         children = text_to_children(b[6:])
-        return HTMLNode("h5",children)
+        return ParentNode("h5",children)
     elif b.startswith("###### "):
         children = text_to_children(b[7:])
-        return HTMLNode("h6",children)
+        return ParentNode("h6",children)
 
 
